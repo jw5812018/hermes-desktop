@@ -357,7 +357,7 @@ interface HermesAPI {
       keyPath: string;
       remotePort: number;
       localPort: number;
-        dockerContainerName?: string;
+      dockerContainerName?: string;
     };
   }>;
   setConnectionConfig: (
