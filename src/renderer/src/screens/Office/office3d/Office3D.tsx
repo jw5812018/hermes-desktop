@@ -136,6 +136,8 @@ export default function Office3D({
   location = "city",
   onFocusBuilding,
   onAtmActivate,
+  tellerLabel,
+  onTellerActivate,
   onCarActivate,
   onDeskActivate,
   devMode = false,
@@ -150,6 +152,10 @@ export default function Office3D({
   onFocusBuilding?: (building: BuildingId | null) => void;
   /** Bank interior: an ATM was clicked. */
   onAtmActivate?: () => void;
+  /** Bank interior: pre-translated teller hover label. */
+  tellerLabel?: string;
+  /** Bank interior: a teller was clicked (opens the representative menu). */
+  onTellerActivate?: () => void;
   /** Showroom interior: a display car was clicked. */
   onCarActivate?: (car: ShowroomCar) => void;
   /** Office interior: a desk was clicked (its owner's agent id). */
@@ -439,7 +445,14 @@ export default function Office3D({
             </group>
           </>
         ))}
-      {inBank && <BankSection interactive onAtmActivate={onAtmActivate} />}
+      {inBank && (
+        <BankSection
+          interactive
+          onAtmActivate={onAtmActivate}
+          tellerLabel={tellerLabel}
+          onTellerActivate={onTellerActivate}
+        />
+      )}
       {inShowroom && <CarShowroom interactive onCarActivate={onCarActivate} />}
       <AgentsLayer
         agents={agents}

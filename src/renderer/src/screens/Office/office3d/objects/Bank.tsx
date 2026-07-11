@@ -257,10 +257,20 @@ const TELLER_TINTS = ["#27496d", "#3a3f55", "#5c4a72"];
 
 /**
  * Bank staff: one teller standing behind each counter station, facing the
- * customers. Decorative today; agent-assisting features (account details,
- * new accounts) will hang off these stations later.
+ * customers. In interior mode each teller is an Interactable — clicking one
+ * opens the bank's representative menu (account status, balances, new
+ * accounts) up in the Office screen.
  */
-function BankTellers(): React.JSX.Element {
+function BankTellers({
+  interactive = false,
+  label,
+  onTellerActivate,
+}: {
+  interactive?: boolean;
+  /** Hover label (pre-translated — i18n can't cross the Canvas). */
+  label?: string;
+  onTellerActivate?: () => void;
+}): React.JSX.Element {
   const counterW = 10;
   const numStations = 3;
   const stationW = counterW / numStations;
@@ -270,13 +280,22 @@ function BankTellers(): React.JSX.Element {
   return (
     <group>
       {Array.from({ length: numStations }).map((_, i) => (
-        <StaffPerson
+        <Interactable
           key={`teller-${i}`}
+          enabled={interactive && !!onTellerActivate}
+          label={label ?? "Teller"}
+          onActivate={() => onTellerActivate?.()}
           position={[-counterW / 2 + stationW * (i + 0.5), 0, tellerZ]}
-          rotationY={0}
-          tint={TELLER_TINTS[i % TELLER_TINTS.length]}
-          model={CHARACTER_MODELS[i % CHARACTER_MODELS.length]}
-        />
+          labelHeight={2.1}
+          ringRadius={0.55}
+        >
+          <StaffPerson
+            position={[0, 0, 0]}
+            rotationY={0}
+            tint={TELLER_TINTS[i % TELLER_TINTS.length]}
+            model={CHARACTER_MODELS[i % CHARACTER_MODELS.length]}
+          />
+        </Interactable>
       ))}
     </group>
   );
@@ -347,11 +366,16 @@ export const BankSection = memo(function BankSection({
   position = [BANK_X, 0, BANK_Z],
   interactive = false,
   onAtmActivate,
+  tellerLabel,
+  onTellerActivate,
 }: {
   position?: [number, number, number];
-  /** Interior mode: ATMs become hover/click interactables. */
+  /** Interior mode: ATMs and tellers become hover/click interactables. */
   interactive?: boolean;
   onAtmActivate?: () => void;
+  /** Pre-translated teller hover label. */
+  tellerLabel?: string;
+  onTellerActivate?: () => void;
 } = {}): React.JSX.Element {
   return (
     <group position={position}>
@@ -360,7 +384,11 @@ export const BankSection = memo(function BankSection({
       <Suspense fallback={null}>
         <BankATMs interactive={interactive} onAtmActivate={onAtmActivate} />
         <BankDecor />
-        <BankTellers />
+        <BankTellers
+          interactive={interactive}
+          label={tellerLabel}
+          onTellerActivate={onTellerActivate}
+        />
       </Suspense>
     </group>
   );

@@ -24,7 +24,7 @@ Controls are disabled during flight so damping doesn't fight the animation, and 
 
 `office3d/objects/Interactable.tsx` wraps interior objects: hover shows a billboard label (troika text, CSP-safe local font) and a ground ring, click fires the action. Disabled outside the matching interior so city-view click semantics are untouched.
 
-Wired actions: bank ATMs open the profile modal on its wallet section (`OpenProfileOptions.initialSection`, threaded through [[src/renderer/src/components/profile/ProfileModalProvider.tsx#ProfileModalProvider]]); showroom cars open a spec card overlay in Office.tsx; office desks select their owner agent (details sidebar).
+Wired actions: bank ATMs open the profile modal on its wallet section (`OpenProfileOptions.initialSection`, threaded through [[src/renderer/src/components/profile/ProfileModalProvider.tsx#ProfileModalProvider]]); bank tellers open the space-representative menu (see [[office-interactions#Office Space Interactions#Teller Interactable]]); showroom cars open a spec card overlay in Office.tsx; office desks select their owner agent (details sidebar).
 
 ## People & staff
 
@@ -32,7 +32,7 @@ Every human in the world stands the same height: `PERSON_WORLD_HEIGHT` in `offic
 
 The value is derived, not chosen: profile agents render at their 0.65 normalised height × RiggedCharacter's 1.45 multiplier × `AGENT_SCALE` (1.75); the constant bakes that product so NPC scaling can't drift from the agent pipeline.
 
-[[src/renderer/src/screens/Office/office3d/objects/StaffPerson.tsx#StaffPerson]] is a stationary tinted man.glb rig playing its idle clip, used for building staff: three bank tellers behind the counter stations ([[src/renderer/src/screens/Office/office3d/objects/Bank.tsx#BankTellers]]) and a showroom salesperson + manager. They are set dressing today; assisting features (account details, opening accounts, selling cars to agents) will attach to these stations later.
+[[src/renderer/src/screens/Office/office3d/objects/StaffPerson.tsx#StaffPerson]] is a stationary tinted man.glb rig playing its idle clip, used for building staff: three bank tellers behind the counter stations ([[src/renderer/src/screens/Office/office3d/objects/Bank.tsx#BankTellers]]) and a showroom salesperson + manager. The tellers are interactive — clicking one opens the bank's representative menu ([[office-interactions#Office Space Interactions]]); the showroom staff are set dressing until car sales attach to them the same way.
 
 All ambient people are coloured through [[src/renderer/src/screens/Office/office3d/core/glb.ts#tintCharacterClone]], which mirrors the agents' RiggedCharacter rule: only the rig's shirt materials take the tint (skin/hair/trousers keep their own colours), with an all-materials fallback — so NPCs never look like full-body colour casts next to an agent.
 

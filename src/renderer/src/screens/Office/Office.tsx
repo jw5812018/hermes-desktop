@@ -15,7 +15,9 @@ import { useProfileModal } from "../../components/profile/ProfileModalContext";
 import oneChatIcon from "../../assets/images/one-chat.svg";
 import OneChatModal from "./OneChatModal";
 import Office3D from "./office3d/Office3D";
+import RepInteractionPanel from "./RepInteractionPanel";
 import { officeAgentsChanged, profilesToOfficeAgents } from "./office3d/agents";
+import { getRepresentative } from "./office3d/interactions/registry";
 import type { ShowroomCar } from "./office3d/objects/CarShowroom";
 import type { BuildingId, OfficeLocation } from "./office3d/core/locations";
 import type { OfficeAgent } from "./office3d/core/types";
@@ -56,6 +58,8 @@ function Office({ visible }: OfficeProps): React.JSX.Element {
     null,
   );
   const [carCard, setCarCard] = useState<ShowroomCar | null>(null);
+  // Space-representative menu (bank tellers today): which rep's panel is open.
+  const [activeRepId, setActiveRepId] = useState<string | null>(null);
   const { openProfile } = useProfileModal();
   // Developer building-mover: click a building, then click ground to reposition
   // it; positions are logged to the console so the cityPlan constants can be
@@ -171,11 +175,13 @@ function Office({ visible }: OfficeProps): React.JSX.Element {
     setLocation(building);
     setFocusedBuilding(null);
     setCarCard(null);
+    setActiveRepId(null);
   }, []);
 
   const exitToCity = useCallback(() => {
     setLocation("city");
     setCarCard(null);
+    setActiveRepId(null);
   }, []);
 
   // Escape backs out of an interior to the city view.
@@ -199,6 +205,15 @@ function Office({ visible }: OfficeProps): React.JSX.Element {
     (car: ShowroomCar) => setCarCard(car),
     [],
   );
+
+  // Bank teller → the representative menu (account status, balances, new
+  // accounts) for a chosen agent.
+  const handleTellerActivate = useCallback(() => {
+    setActiveRepId("bank-teller");
+  }, []);
+
+  const closeRepPanel = useCallback(() => setActiveRepId(null), []);
+  const activeRep = getRepresentative(activeRepId);
 
   // Office desk → select its owner (opens the agent details sidebar).
   const handleDeskActivate = useCallback(
@@ -340,6 +355,8 @@ function Office({ visible }: OfficeProps): React.JSX.Element {
           location={location}
           onFocusBuilding={setFocusedBuilding}
           onAtmActivate={handleAtmActivate}
+          tellerLabel={t("office.repBankTeller")}
+          onTellerActivate={handleTellerActivate}
           onCarActivate={handleCarActivate}
           onDeskActivate={handleDeskActivate}
           devMode={devMode}
@@ -585,7 +602,16 @@ function Office({ visible }: OfficeProps): React.JSX.Element {
           agents={positionedAgents}
         />
 
-        {selectedAgent && (
+        {activeRep && (
+          <RepInteractionPanel
+            rep={activeRep}
+            agents={positionedAgents}
+            initialAgentId={selectedId}
+            onClose={closeRepPanel}
+          />
+        )}
+
+        {selectedAgent && !activeRep && (
           <aside
             style={{
               position: "absolute",

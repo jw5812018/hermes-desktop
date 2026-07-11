@@ -39,19 +39,24 @@ export function mapCloudWallet(raw: CloudWalletRaw): WalletView | null {
   };
 }
 
+/** Everything a backend wallet call needs for a profile's linked agent. */
+export type LinkedAgentResolution =
+  | { status: "signed-out" | "unlinked" }
+  | { status: "ok"; apiUrl: string; token: string; agentId: string };
+
 /**
- * Cloud wallets for `profile`'s linked agent. Signed out → no wallets; a
- * profile that has never synced triggers one agent sync first (so it gets an
- * agent id), then the fetch. Errors (network/401) surface as `status: "error"`.
+ * Resolve the signed-in account and the profile's linked cloud-agent id, the
+ * common preamble of every backend wallet call. A profile that has never
+ * synced triggers one agent sync first (so it gets an agent id).
  */
-export async function syncWalletsForProfile(
+export async function resolveLinkedAgent(
   profile?: string,
-): Promise<WalletSyncResult> {
+): Promise<LinkedAgentResolution> {
   const name = profile || "default";
   const accountProfile = findAccountProfile();
   const account = accountProfile ? getAccount(accountProfile) : null;
   const token = accountProfile ? getAccessToken(accountProfile) : null;
-  if (!account || !token) return { status: "signed-out", wallets: [] };
+  if (!account || !token) return { status: "signed-out" };
 
   let agentId = getLinkedAgentId(name);
   if (!agentId) {
@@ -59,11 +64,26 @@ export async function syncWalletsForProfile(
     await syncAgents();
     agentId = getLinkedAgentId(name);
   }
-  if (!agentId) return { status: "unlinked", wallets: [] };
+  if (!agentId) return { status: "unlinked" };
+  return { status: "ok", apiUrl: account.apiUrl, token, agentId };
+}
+
+/**
+ * Cloud wallets for `profile`'s linked agent. Signed out → no wallets.
+ * Errors (network/401) surface as `status: "error"`.
+ */
+export async function syncWalletsForProfile(
+  profile?: string,
+): Promise<WalletSyncResult> {
+  const resolved = await resolveLinkedAgent(profile);
+  if (resolved.status !== "ok") {
+    return { status: resolved.status, wallets: [] };
+  }
+  const { apiUrl, token, agentId } = resolved;
 
   try {
     const res = await fetch(
-      `${account.apiUrl}/api/wallets?agentId=${encodeURIComponent(agentId)}`,
+      `${apiUrl}/api/wallets?agentId=${encodeURIComponent(agentId)}`,
       { headers: { ...apiHeaders(false), authorization: `Bearer ${token}` } },
     );
     if (!res.ok) {
@@ -84,7 +104,7 @@ export async function syncWalletsForProfile(
     return {
       status: "error",
       wallets: [],
-      error: `Couldn't reach ${account.apiUrl}: ${(err as Error).message}`,
+      error: `Couldn't reach ${apiUrl}: ${(err as Error).message}`,
     };
   }
 }
