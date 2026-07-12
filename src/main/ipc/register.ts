@@ -93,7 +93,11 @@ import {
 } from "../hermes-auth";
 import { startDeviceLogin, cancelDeviceLogin } from "../hermes-account";
 import { syncAgents, getAgentSyncStatus } from "../agent-sync";
-import { getAccount, clearAccount } from "../account-store";
+import {
+  getAccount,
+  clearAllAccounts,
+  findAccountProfile,
+} from "../account-store";
 import {
   isRemoteMode,
   isRemoteOnlyMode,
@@ -243,6 +247,7 @@ import {
   renameWallet,
 } from "../wallet-store";
 import { syncWalletsForProfile } from "../wallet-sync";
+import { getWalletPortfolio, provisionAgentWallet } from "../wallet-actions";
 import { getTokenBalances } from "../wallet-balances";
 import type { ImportWalletInput } from "../../shared/wallets";
 import {
@@ -815,11 +820,15 @@ export function registerIpcHandlers(context: IpcContext): void {
     }),
   );
   ipcMain.handle("hermes-account-login-cancel", () => cancelDeviceLogin());
+  // The account is device-wide (one Hermes One login for the whole app), but
+  // account.json lives under whichever profile was active at sign-in. Resolve
+  // it app-wide so switching the active agent doesn't read as signed out, and
+  // sign out wherever the file lives.
   ipcMain.handle("hermes-account-get", (_event, profile?: string) =>
-    getAccount(profile),
+    getAccount(findAccountProfile() ?? profile),
   );
-  ipcMain.handle("hermes-account-logout", (_event, profile?: string) => {
-    clearAccount(profile);
+  ipcMain.handle("hermes-account-logout", () => {
+    clearAllAccounts();
     return { success: true };
   });
 
@@ -1998,6 +2007,16 @@ export function registerIpcHandlers(context: IpcContext): void {
   // Read-only here; the desktop no longer mints wallets locally.
   ipcMain.handle("wallet-sync", (_event, profile?: string) =>
     syncWalletsForProfile(profile),
+  );
+  // Backend-driven wallet ops used by the Office's space representatives
+  // (bank tellers): balances and provisioning both live server-side.
+  ipcMain.handle(
+    "wallet-portfolio",
+    (_event, profile: string | undefined, walletId: string) =>
+      getWalletPortfolio(profile, walletId),
+  );
+  ipcMain.handle("wallet-provision", (_event, profile?: string) =>
+    provisionAgentWallet(profile),
   );
   ipcMain.handle("get-token-balances", (_event, address: string) =>
     getTokenBalances(address),
