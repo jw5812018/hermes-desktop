@@ -55,4 +55,5 @@ export default {
   repBalanceTotal: "總計",
   repCreateSuccess: "帳戶已開設",
   repCreateExists: "該智能體已有銀行帳戶。",
+  repStatusForeign: "該智能體已關聯到另一個 Hermes One 帳戶。",
 } as const;

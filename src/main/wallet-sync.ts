@@ -5,7 +5,11 @@ import {
   getAccessToken,
 } from "./account-store";
 import { apiHeaders } from "./hermes-account";
-import { getLinkedAgentId, syncAgents } from "./agent-sync";
+import {
+  getLinkedAgentAccountId,
+  getLinkedAgentId,
+  syncAgents,
+} from "./agent-sync";
 import { BASE_NETWORK_ID } from "../shared/wallets";
 import type {
   CloudWalletRaw,
@@ -41,13 +45,16 @@ export function mapCloudWallet(raw: CloudWalletRaw): WalletView | null {
 
 /** Everything a backend wallet call needs for a profile's linked agent. */
 export type LinkedAgentResolution =
-  | { status: "signed-out" | "unlinked" }
+  | { status: "signed-out" | "unlinked" | "foreign" }
   | { status: "ok"; apiUrl: string; token: string; agentId: string };
 
 /**
  * Resolve the signed-in account and the profile's linked cloud-agent id, the
  * common preamble of every backend wallet call. A profile that has never
- * synced triggers one agent sync first (so it gets an agent id).
+ * synced triggers one agent sync first (so it gets an agent id). A profile
+ * whose link is owned by a different account resolves as `foreign` — wallet
+ * actions must not act on another account's agent (the backend enforces
+ * ownership too; this makes the refusal explicit client-side).
  */
 export async function resolveLinkedAgent(
   profile?: string,
@@ -65,6 +72,8 @@ export async function resolveLinkedAgent(
     agentId = getLinkedAgentId(name);
   }
   if (!agentId) return { status: "unlinked" };
+  const owner = getLinkedAgentAccountId(name);
+  if (owner && owner !== account.user.id) return { status: "foreign" };
   return { status: "ok", apiUrl: account.apiUrl, token, agentId };
 }
 

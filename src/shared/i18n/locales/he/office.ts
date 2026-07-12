@@ -77,4 +77,5 @@ export default {
   repBalanceTotal: "סה\"כ",
   repCreateSuccess: "החשבון נפתח",
   repCreateExists: "לסוכן זה כבר יש חשבון בנק.",
+  repStatusForeign: "סוכן זה מקושר לחשבון Hermes One אחר.",
 } as const;

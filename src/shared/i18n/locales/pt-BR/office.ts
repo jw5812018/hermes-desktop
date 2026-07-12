@@ -57,4 +57,5 @@ export default {
   repBalanceTotal: "Total",
   repCreateSuccess: "Conta criada",
   repCreateExists: "Este agente já tem uma conta bancária.",
+  repStatusForeign: "Este agente está vinculado a outra conta Hermes One.",
 } as const;

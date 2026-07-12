@@ -57,4 +57,5 @@ export default {
   repBalanceTotal: "合計",
   repCreateSuccess: "口座を開設しました",
   repCreateExists: "このエージェントはすでに銀行口座を持っています。",
+  repStatusForeign: "このエージェントは別の Hermes One アカウントに連携されています。",
 } as const;

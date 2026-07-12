@@ -71,12 +71,14 @@ export default function RepInteractionPanel({
   }, [agentId]);
 
   const hintForStatus = useCallback(
-    (status: "signed-out" | "unlinked"): ActionState => ({
+    (status: "signed-out" | "unlinked" | "foreign"): ActionState => ({
       kind: "hint",
       message:
         status === "signed-out"
           ? t("office.repStatusSignedOut")
-          : t("office.repStatusUnlinked"),
+          : status === "foreign"
+            ? t("office.repStatusForeign")
+            : t("office.repStatusUnlinked"),
     }),
     [t],
   );
@@ -89,7 +91,11 @@ export default function RepInteractionPanel({
       try {
         if (actionId === "accountStatus") {
           const res = await window.hermesAPI.syncWallets(agentId);
-          if (res.status === "signed-out" || res.status === "unlinked") {
+          if (
+            res.status === "signed-out" ||
+            res.status === "unlinked" ||
+            res.status === "foreign"
+          ) {
             setState(hintForStatus(res.status));
           } else if (res.status === "error") {
             setState({
@@ -103,7 +109,11 @@ export default function RepInteractionPanel({
         }
         if (actionId === "checkBalance") {
           const res = await window.hermesAPI.syncWallets(agentId);
-          if (res.status === "signed-out" || res.status === "unlinked") {
+          if (
+            res.status === "signed-out" ||
+            res.status === "unlinked" ||
+            res.status === "foreign"
+          ) {
             setState(hintForStatus(res.status));
             return;
           }

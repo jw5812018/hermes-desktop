@@ -32,6 +32,9 @@ vi.mock("./hermes-account", () => ({
 
 vi.mock("./agent-sync", () => ({
   getLinkedAgentId: () => mockState.linkedAgentId,
+  // Link owner recorded in sync state; null = legacy/untagged (allowed —
+  // the backend still enforces ownership server-side).
+  getLinkedAgentAccountId: () => null,
   syncAgents: vi.fn(async () => {
     mockState.syncAgentsCalls++;
     mockState.linkedAgentId = mockState.linkAfterSync;

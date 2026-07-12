@@ -93,7 +93,11 @@ import {
 } from "../hermes-auth";
 import { startDeviceLogin, cancelDeviceLogin } from "../hermes-account";
 import { syncAgents, getAgentSyncStatus } from "../agent-sync";
-import { getAccount, clearAccount } from "../account-store";
+import {
+  getAccount,
+  clearAllAccounts,
+  findAccountProfile,
+} from "../account-store";
 import {
   isRemoteMode,
   isRemoteOnlyMode,
@@ -816,11 +820,15 @@ export function registerIpcHandlers(context: IpcContext): void {
     }),
   );
   ipcMain.handle("hermes-account-login-cancel", () => cancelDeviceLogin());
+  // The account is device-wide (one Hermes One login for the whole app), but
+  // account.json lives under whichever profile was active at sign-in. Resolve
+  // it app-wide so switching the active agent doesn't read as signed out, and
+  // sign out wherever the file lives.
   ipcMain.handle("hermes-account-get", (_event, profile?: string) =>
-    getAccount(profile),
+    getAccount(findAccountProfile() ?? profile),
   );
-  ipcMain.handle("hermes-account-logout", (_event, profile?: string) => {
-    clearAccount(profile);
+  ipcMain.handle("hermes-account-logout", () => {
+    clearAllAccounts();
     return { success: true };
   });
 

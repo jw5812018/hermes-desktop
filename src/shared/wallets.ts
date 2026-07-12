@@ -52,7 +52,8 @@ export interface WalletView {
 
 /** Result of fetching the linked agent's cloud wallets. */
 export interface WalletSyncResult {
-  status: "ok" | "signed-out" | "unlinked" | "error";
+  /** `foreign`: the profile's cloud link belongs to a different account. */
+  status: "ok" | "signed-out" | "unlinked" | "foreign" | "error";
   /** Cloud wallets only; the renderer merges local wallets in separately. */
   wallets: WalletView[];
   error?: string;
@@ -69,7 +70,8 @@ export interface PortfolioTokenView {
 
 /** Result of `GET /api/wallets/:id/portfolio` for a profile's cloud wallet. */
 export interface WalletPortfolioResult {
-  status: "ok" | "signed-out" | "unlinked" | "error";
+  /** `foreign`: the profile's cloud link belongs to a different account. */
+  status: "ok" | "signed-out" | "unlinked" | "foreign" | "error";
   totalUsd?: number;
   tokens?: PortfolioTokenView[];
   error?: string;
@@ -78,7 +80,7 @@ export interface WalletPortfolioResult {
 /** Result of provisioning a backend (Bankr) wallet for a profile's agent. */
 export interface ProvisionWalletResult {
   /** `exists`: the agent already has a provisioned wallet (backend 409). */
-  status: "ok" | "exists" | "signed-out" | "unlinked" | "error";
+  status: "ok" | "exists" | "signed-out" | "unlinked" | "foreign" | "error";
   wallet?: WalletView;
   error?: string;
 }

@@ -57,4 +57,5 @@ export default {
   repBalanceTotal: "Total",
   repCreateSuccess: "Akun dibuat",
   repCreateExists: "Agen ini sudah memiliki akun bank.",
+  repStatusForeign: "Agen ini tertaut ke akun Hermes One yang berbeda.",
 } as const;

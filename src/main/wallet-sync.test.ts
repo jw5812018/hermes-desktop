@@ -8,6 +8,8 @@ import type { CloudWalletRaw } from "../shared/wallets";
 const mockState = vi.hoisted(() => ({
   account: null as { apiUrl: string; token: string } | null,
   linkedAgentId: null as string | null,
+  /** Owner recorded in the profile's sync state (null = legacy/untagged). */
+  linkedAccountId: null as string | null,
   syncAgentsCalls: 0,
   // A value the auto-sync "creates" — returned by getLinkedAgentId after sync.
   linkAfterSync: null as string | null,
@@ -32,6 +34,7 @@ vi.mock("./hermes-account", () => ({
 
 vi.mock("./agent-sync", () => ({
   getLinkedAgentId: () => mockState.linkedAgentId,
+  getLinkedAgentAccountId: () => mockState.linkedAccountId,
   syncAgents: vi.fn(async () => {
     mockState.syncAgentsCalls++;
     mockState.linkedAgentId = mockState.linkAfterSync;
@@ -75,6 +78,7 @@ async function engine(): Promise<typeof import("./wallet-sync")> {
 beforeEach(() => {
   mockState.account = { apiUrl: "http://localhost:3002", token: "tok" };
   mockState.linkedAgentId = null;
+  mockState.linkedAccountId = null;
   mockState.linkAfterSync = null;
   mockState.syncAgentsCalls = 0;
   vi.resetModules();
@@ -163,5 +167,26 @@ describe("syncWalletsForProfile", () => {
     const result = await syncWalletsForProfile("default");
     expect(result.status).toBe("error");
     expect(result.error).toContain("401");
+  });
+
+  it("refuses to act on an agent linked to a different account", async () => {
+    mockState.linkedAgentId = "agent-1";
+    mockState.linkedAccountId = "someone-else";
+    const calls = stubFetch([rawWallet()]);
+    const { syncWalletsForProfile } = await engine();
+    const result = await syncWalletsForProfile("default");
+    expect(result.status).toBe("foreign");
+    expect(result.wallets).toEqual([]);
+    // The refusal is client-side: no backend call is made for the foreign agent.
+    expect(calls).toHaveLength(0);
+  });
+
+  it("still acts when the link owner matches the signed-in account", async () => {
+    mockState.linkedAgentId = "agent-1";
+    mockState.linkedAccountId = "u1";
+    stubFetch([rawWallet()]);
+    const { syncWalletsForProfile } = await engine();
+    const result = await syncWalletsForProfile("default");
+    expect(result.status).toBe("ok");
   });
 });
