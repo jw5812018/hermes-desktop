@@ -146,6 +146,40 @@ describe("connection config secret exposure", () => {
     }
   });
 
+  it("does not attach a stale token to OAuth Remote health probes", async () => {
+    const { setConnectionConfig } = await loadConnectionConfigModule();
+    const { testRemoteConnection } = await import("../src/main/hermes");
+    const server = http.createServer((req, res) => {
+      res.statusCode = req.headers.authorization ? 401 : 200;
+      res.end();
+    });
+
+    const url = await listen(server);
+
+    try {
+      setConnectionConfig({
+        mode: "remote",
+        remoteUrl: url,
+        apiKey: "stale-token",
+        remoteAuthMode: "oauth",
+        remoteChatTransport: "auto",
+        sshChatTransport: "auto",
+        ssh: {
+          host: "",
+          port: 22,
+          username: "",
+          keyPath: "",
+          remotePort: 8642,
+          localPort: 18642,
+        },
+      });
+
+      await expect(testRemoteConnection(url)).resolves.toBe(true);
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+
   it("preserves remote settings when switching away from remote mode", async () => {
     const {
       getConnectionConfig,

@@ -275,6 +275,7 @@ function resolveRemoteApiKey(url: string, apiKey?: string): string {
   if (normaliseRemoteUrl(conn.remoteUrl) !== normaliseRemoteUrl(url)) {
     return "";
   }
+  if (conn.remoteAuthMode === "oauth") return "";
   return conn.apiKey;
 }
 
