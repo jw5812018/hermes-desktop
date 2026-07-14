@@ -3379,7 +3379,15 @@ export function testRemoteConnection(
   apiKey?: string,
 ): Promise<boolean> {
   return new Promise((resolve) => {
-    const target = `${normaliseRemoteUrl(url)}/health`;
+    const conn = getConnectionConfig();
+    const configuredOAuth =
+      apiKey === undefined &&
+      conn.mode === "remote" &&
+      conn.remoteAuthMode === "oauth" &&
+      normaliseRemoteUrl(conn.remoteUrl) === normaliseRemoteUrl(url);
+    const target = `${normaliseRemoteUrl(url)}${
+      configuredOAuth ? "/api/status" : "/health"
+    }`;
     const mod = target.startsWith("https") ? https : http;
     const headers: Record<string, string> = {};
     const resolvedApiKey = resolveRemoteApiKey(url, apiKey);

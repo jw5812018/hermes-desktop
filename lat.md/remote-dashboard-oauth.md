@@ -8,7 +8,7 @@ The public dashboard status endpoint selects token or OAuth behavior automatical
 
 [[src/main/remote-oauth.ts#probeRemoteAuthMode]] reads `/api/status`; `auth_required: true` selects OAuth. The detected mode is persisted as bounded configuration state. Token Remote mode and SSH token transport remain unchanged.
 
-The public startup health probe omits any stored token after OAuth is selected, preventing stale token state from making a reachable dashboard appear offline.
+The public startup probe uses `/api/status` without a stored token after OAuth is selected, avoiding the authenticated `/health` redirect and stale-token false negatives.
 
 ## Credential boundary
 

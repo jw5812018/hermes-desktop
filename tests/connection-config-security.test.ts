@@ -150,7 +150,8 @@ describe("connection config secret exposure", () => {
     const { setConnectionConfig } = await loadConnectionConfigModule();
     const { testRemoteConnection } = await import("../src/main/hermes");
     const server = http.createServer((req, res) => {
-      res.statusCode = req.headers.authorization ? 401 : 200;
+      res.statusCode =
+        req.url === "/api/status" && !req.headers.authorization ? 200 : 401;
       res.end();
     });
 
