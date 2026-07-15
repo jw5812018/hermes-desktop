@@ -14,6 +14,7 @@ Hermes One automatically detects the remote gateway authentication mode from the
 - When `auth_required` is true, Settings hides the token field and shows remote OAuth state with Sign in and Sign out actions.
 - Sign in opens a sandboxed Electron browser window at the gateway `/login` route. The window closes after the gateway callback establishes an OAuth session.
 - A cancelled login preserves the remote URL and existing connection configuration.
+- Completing sign-in revalidates the current connection before committing OAuth mode. A gateway or mode change rejects that completion; unrelated concurrent settings remain intact.
 - An expired session produces a specific reauthentication action instead of starting a local gateway or falling back to the legacy `/v1` transport.
 
 Changing the remote URL refreshes authentication detection. OAuth cookies remain scoped by Electron's cookie jar to their gateway domain.
@@ -48,8 +49,8 @@ For OAuth gateways:
 3. The identity-provider redirect returns to `/auth/callback`, which writes HttpOnly access and refresh cookies into that partition.
 4. Authenticated dashboard REST requests use Electron `net.request` with the same partition and `useSessionCookies: true`.
 5. Immediately before every WebSocket connection, the main process sends cookie-authenticated `POST /api/auth/ws-ticket`.
-6. The main process returns a fresh `ws://` or `wss://` URL containing only the short-lived `?ticket=` value.
-7. The renderer opens the WebSocket and discards the URL after that connection attempt.
+6. A `wss://` ticket URL is returned directly. A non-loopback `ws://` URL stays in the main process, which creates a one-shot relay on `127.0.0.1` behind a random capability path.
+7. The renderer opens the direct secure URL or loopback relay URL and discards it after that connection attempt.
 
 The WebSocket URL must be minted per connection, including reconnects. It cannot be cached in `DashboardConnection` because OAuth tickets are short-lived and single-use.
 
@@ -74,6 +75,8 @@ New preload APIs provide bounded operations:
 
 Every IPC handler validates and normalizes the remote URL in the main process. Renderer callers cannot select arbitrary session partitions or request cookies.
 
+OAuth login completion re-reads configuration after the browser window closes. It sets `remoteAuthMode` on that current snapshot only if Remote mode and the normalized URL still match the login target.
+
 ## Dashboard transport integration
 
 `src/main/dashboard.ts` resolves a remote dashboard connection according to detected authentication mode.
@@ -84,6 +87,8 @@ OAuth connections use the partition-bound request helper for authenticated endpo
 
 The dashboard renderer requests a fresh WebSocket URL immediately before every `DashboardGatewayClient.connect()` call. A cached token URL remains valid for token mode; OAuth mode always mints another ticket.
 
+Insecure, non-loopback dashboard WebSockets are never exposed to renderer code. The main process creates a one-connection loopback relay, waits for the target handshake, then bridges frames and closes the listener.
+
 OAuth dashboard failure never triggers legacy `/v1` or local-gateway fallback. Those paths use incompatible credentials and could silently route a conversation to the wrong backend.
 
 ## Error behavior
@@ -91,6 +96,7 @@ OAuth dashboard failure never triggers legacy `/v1` or local-gateway fallback. T
 Errors remain specific and actionable:
 
 - Closing the login window before cookies appear returns `oauth_cancelled`.
+- Changing the connection mode or gateway during login returns `oauth_connection_changed` without overwriting the newer configuration.
 - Missing access and refresh cookies returns `oauth_login_required`.
 - HTTP 401 from an authenticated REST or ticket request returns `oauth_login_required` and clears the connected indicator.
 - Missing or malformed `/api/auth/ws-ticket` response reports gateway incompatibility and names the endpoint.
@@ -117,6 +123,9 @@ Focused tests cover:
 - SSH behavior remaining unchanged;
 - preload and IPC surface restrictions;
 - renderer Settings states for probing, signed out, signing in, connected, cancelled, and expired.
+- concurrent configuration changes during interactive login;
+- relay capability rejection, one-shot forwarding, and target URL confinement;
+- CSP rejection of the wildcard `ws:` source while retaining loopback WebSockets.
 
 Verification includes focused tests, Node and renderer typechecks, full Vitest suite, production build, and `lat check`. Relevant architecture and test specifications are added to `lat.md/` with source/test references.
 
@@ -126,13 +135,17 @@ OAuth secrets stay in Electron's cookie store. The application never reads, seri
 
 Login content runs with `nodeIntegration: false`, `contextIsolation: true`, `sandbox: true`, and `webSecurity: true`. Navigation remains limited to the gateway login flow and identity-provider redirects; popup and external navigation behavior follows explicit allowlisting.
 
-Ticket minting accepts only normalized HTTP(S) gateway URLs. WebSocket URLs are derived from that gateway origin and use `ws:` only for `http:` gateways and `wss:` for `https:` gateways.
+Ticket minting accepts only normalized HTTP(S) gateway URLs. `wss:` targets may reach the renderer, but non-loopback `ws:` targets are confined to a capability-protected, one-shot loopback relay owned by the main process.
+
+Both the response-header CSP and packaged renderer meta CSP omit the wildcard `ws:` source. They permit only the existing loopback WebSocket sources needed for local, SSH-tunneled, and relayed connections.
 
 ## Acceptance criteria
 
 Given a remote URL whose `/api/status` reports `auth_required: true`, Hermes One identifies OAuth mode and offers browser sign-in without requesting a session token.
 
 After successful sign-in, authenticated dashboard REST calls succeed through the persistent OAuth partition, each WebSocket connection receives a newly minted ticket, and chat connects without local or legacy fallback.
+
+If connection settings change while sign-in is open, completion does not restore stale values. If an HTTP remote gateway is used, its target URL and ticket do not cross IPC; the renderer receives only a one-shot loopback URL.
 
 After application restart, a still-valid access or refresh cookie restores the connected state without another interactive login.
 

@@ -244,6 +244,25 @@ describe("freshDashboardWebSocketUrl", () => {
     );
     expect(oauthMocks.mintRemoteOAuthWsTicket).not.toHaveBeenCalled();
   });
+
+  it("keeps an insecure remote target and token out of renderer IPC", async () => {
+    configMocks.getConnectionConfig.mockReturnValue(
+      remoteConnection({
+        remoteUrl: "http://gateway.lan",
+        apiKey: "private-dashboard-token",
+      }),
+    );
+    oauthMocks.probeRemoteAuthMode.mockResolvedValue({
+      authMode: "token",
+      version: null,
+    });
+
+    const result = await freshDashboardWebSocketUrl();
+
+    expect(result).toMatch(/^ws:\/\/127\.0\.0\.1:\d+\/[a-f0-9]{64}$/);
+    expect(result).not.toContain("gateway.lan");
+    expect(result).not.toContain("private-dashboard-token");
+  });
 });
 
 describe("sshDashboardConnectionFromTunnel", () => {

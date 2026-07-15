@@ -15,6 +15,7 @@ import {
   HERMES_REPO,
 } from "./installer";
 import { buildLocalDashboardCliArgs } from "./dashboard-launch";
+import { dashboardWebSocketUrlForRenderer } from "./dashboard-websocket-relay";
 import { ensureLocalDashboardCompatibility } from "./hermes-agent-compat";
 import { HIDDEN_SUBPROCESS_OPTIONS } from "./process-options";
 import {
@@ -562,7 +563,9 @@ export async function freshDashboardWebSocketUrl(
     const detected = await probeRemoteAuthMode(baseUrl);
     if (detected.authMode === "oauth") {
       const ticket = await mintRemoteOAuthWsTicket(baseUrl);
-      return buildRemoteOAuthWsUrl(baseUrl, ticket);
+      return dashboardWebSocketUrlForRenderer(
+        buildRemoteOAuthWsUrl(baseUrl, ticket),
+      );
     }
     const connection = remoteDashboardConnectionFromConfig(
       { ...config, remoteAuthMode: "token" },
@@ -571,14 +574,14 @@ export async function freshDashboardWebSocketUrl(
     if (!connection) {
       throw new Error("Remote dashboard session token is missing.");
     }
-    return connection.wsUrl;
+    return dashboardWebSocketUrlForRenderer(connection.wsUrl);
   }
 
   const status = await getDashboardStatus(profile);
   if (!status.running || !status.connection?.wsUrl) {
     throw new Error(status.error || "Dashboard WebSocket is unavailable.");
   }
-  return status.connection.wsUrl;
+  return dashboardWebSocketUrlForRenderer(status.connection.wsUrl);
 }
 
 export async function startDashboard(

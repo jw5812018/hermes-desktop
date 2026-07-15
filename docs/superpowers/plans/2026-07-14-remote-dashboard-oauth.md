@@ -24,10 +24,12 @@
 ### Task 1: Remote OAuth session boundary
 
 **Files:**
+
 - Create: `src/main/remote-oauth.ts`
 - Create: `tests/remote-oauth.test.ts`
 
 **Interfaces:**
+
 - Produces: `REMOTE_OAUTH_PARTITION`, `RemoteOAuthError`, `remoteOAuthSessionState(baseUrl)`, `openRemoteOAuthLogin(baseUrl, parent?)`, `clearRemoteOAuthSession(baseUrl)`, `requestRemoteOAuthJson(url, options?)`, `mintRemoteOAuthWsTicket(baseUrl)`, `buildRemoteOAuthWsUrl(baseUrl, ticket)`.
 - Depends on: Electron `app`, `session`, `net`, and `BrowserWindow`; normalized HTTP(S) URL input.
 
@@ -36,7 +38,9 @@
 Add tests proving access cookie or refresh cookie means signed in, unrelated cookies do not, HTTPS maps to WSS, HTTP maps to WS, and invalid protocols fail.
 
 ```ts
-expect(cookiesHaveRemoteOAuthSession([{ name: "hermes_session_rt" }])).toBe(true);
+expect(cookiesHaveRemoteOAuthSession([{ name: "hermes_session_rt" }])).toBe(
+  true,
+);
 expect(cookiesHaveRemoteOAuthSession([{ name: "other" }])).toBe(false);
 expect(buildRemoteOAuthWsUrl("https://host", "once")).toBe(
   "wss://host/api/ws?ticket=once",
@@ -76,6 +80,7 @@ Expected: all Task 1 tests pass.
 ### Task 2: Authentication-mode detection and public IPC
 
 **Files:**
+
 - Modify: `src/main/config.ts`
 - Modify: `src/main/ipc/register.ts`
 - Modify: `src/preload/index.ts`
@@ -85,6 +90,7 @@ Expected: all Task 1 tests pass.
 - Create: `tests/remote-auth-mode.test.ts`
 
 **Interfaces:**
+
 - Produces: `RemoteAuthMode = "auto" | "token" | "oauth"`; public `remoteAuthMode`; preload operations `probeRemoteAuthMode`, `remoteOAuthLogin`, `remoteOAuthLogout`, `remoteOAuthSessionState`, `freshDashboardWsUrl`.
 - Consumes: Task 1 remote OAuth functions and existing connection-config normalization.
 
@@ -111,12 +117,14 @@ Expected: all Task 2 tests pass.
 ### Task 3: OAuth-aware dashboard transport
 
 **Files:**
+
 - Modify: `src/main/dashboard.ts`
 - Modify: `tests/dashboard-remote.test.ts`
 - Modify: `src/preload/index.ts`
 - Modify: `src/preload/index.d.ts`
 
 **Interfaces:**
+
 - Produces: OAuth-capable `DashboardConnection` with `authMode`; `freshDashboardWebSocketUrl(profile?)` that returns static token URL or newly minted OAuth ticket URL.
 - Consumes: Task 1 OAuth requests/ticket minting; Task 2 configured/detected auth mode.
 
@@ -147,6 +155,7 @@ Expected: all Task 3 tests pass.
 ### Task 4: Renderer reconnect path and Settings UX
 
 **Files:**
+
 - Modify: `src/renderer/src/screens/Chat/dashboardGatewayClient.ts`
 - Modify: `src/renderer/src/screens/Chat/dashboardGatewayClient.test.ts`
 - Modify: `src/renderer/src/screens/Chat/hooks/useDashboardChatTransport.ts`
@@ -158,6 +167,7 @@ Expected: all Task 3 tests pass.
 - Add or modify focused Settings tests under `src/renderer/src/components/settings/`.
 
 **Interfaces:**
+
 - Consumes: Task 2 OAuth IPC and Task 3 `freshDashboardWsUrl`.
 - Produces: automatic token/OAuth Settings states and fresh URL before every renderer WebSocket connection.
 
@@ -184,11 +194,13 @@ Run focused Chat and Settings tests. Expected: all pass.
 ### Task 5: Architecture/test documentation and integrated verification
 
 **Files:**
+
 - Modify: `lat.md/main-process.md`
 - Create or modify: `lat.md/remote-dashboard-oauth.md`
 - Add `@lat:` references beside focused source tests.
 
 **Interfaces:**
+
 - Documents: auth split, cookie boundary, ticket lifecycle, no-fallback invariant, and test specifications.
 
 - [ ] **Step 1: Add lat.md architecture and test sections**
@@ -226,3 +238,44 @@ Confirm `git status --short` contains only intended feature/docs files plus pre-
 - [ ] **Step 5: Commit implementation**
 
 Stage only intended files and commit with `feat: support OAuth remote dashboards`.
+
+### Task 6: P1 review remediation
+
+**Files:**
+
+- Modify: `src/main/remote-oauth.ts`
+- Modify: `src/main/ipc/register.ts`
+- Create: `src/main/dashboard-websocket-relay.ts`
+- Modify: `src/main/dashboard.ts`
+- Modify: `src/main/ws.d.ts`
+- Modify: `src/main/app/start.ts`
+- Modify: `src/renderer/index.html`
+- Modify: `tests/remote-oauth.test.ts`
+- Create: `tests/dashboard-websocket-relay.test.ts`
+- Modify: `tests/dashboard-csp.test.ts`
+- Modify: `lat.md/remote-dashboard-oauth.md`
+
+**Interfaces:**
+
+- Produces: post-login config revalidation and a capability-protected, one-shot loopback relay for insecure non-loopback dashboard WebSockets.
+- Preserves: current connection changes, direct `wss:` transport, and loopback local/SSH transport.
+
+- [ ] **Step 1: Add failing config-race and CSP/relay tests**
+
+Prove login completion preserves current settings, rejects a changed gateway or mode, forwards one WebSocket through loopback, rejects an invalid capability, and removes wildcard `ws:` from both CSP layers.
+
+- [ ] **Step 2: Verify RED**
+
+Run focused Vitest files. Expected: missing helper/relay exports and wildcard CSP assertions fail.
+
+- [ ] **Step 3: Implement config revalidation and loopback relay**
+
+Re-read connection configuration after interactive login. Proxy only non-loopback `ws:` targets; wait for the target handshake before accepting the renderer connection, then bridge frames and close the listener.
+
+- [ ] **Step 4: Verify focused behavior and security invariants**
+
+Run focused tests, Node typecheck, `lat check`, and `git diff --check`. Confirm target URL and ticket never appear in the relay URL.
+
+- [ ] **Step 5: Run integrated verification and restack dependent branches**
+
+Run the full suite and build, commit the review fixes, push PR 853, rebase/push descendant branches with exact leases, then reply to and resolve the two review threads.

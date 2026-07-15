@@ -79,7 +79,7 @@ export function startMainProcess(): void {
               "style-src 'self' 'unsafe-inline'; " +
               "img-src 'self' data: blob: file: https:; " +
               "media-src 'self' data: blob: file: https:; " +
-              "connect-src 'self' blob: http://127.0.0.1:* ws://127.0.0.1:* http://localhost:* ws://localhost:* https: wss: ws:; " +
+              "connect-src 'self' blob: http://127.0.0.1:* ws://127.0.0.1:* http://localhost:* ws://localhost:* https: wss:; " +
               "font-src 'self' data:; " +
               "frame-src 'self' https: http://127.0.0.1:* http://localhost:*; " +
               "object-src 'none'; " +

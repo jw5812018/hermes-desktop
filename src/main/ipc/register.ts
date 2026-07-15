@@ -125,6 +125,7 @@ import {
 } from "../dashboard";
 import {
   clearRemoteOAuthSession,
+  connectionConfigAfterRemoteOAuthLogin,
   openRemoteOAuthLogin,
   probeRemoteAuthMode,
   remoteOAuthSessionState,
@@ -1276,15 +1277,20 @@ export function registerIpcHandlers(context: IpcContext): void {
   });
 
   ipcMain.handle("remote-oauth-login", async () => {
-    const conn = getConnectionConfig();
-    if (conn.mode !== "remote" || !conn.remoteUrl.trim()) {
+    const loginConfig = getConnectionConfig();
+    if (loginConfig.mode !== "remote" || !loginConfig.remoteUrl.trim()) {
       throw new Error("Configure a Remote gateway URL before signing in.");
     }
     const result = await openRemoteOAuthLogin(
-      conn.remoteUrl,
+      loginConfig.remoteUrl,
       context.getMainWindow(),
     );
-    setConnectionConfig({ ...conn, remoteAuthMode: "oauth" });
+    setConnectionConfig(
+      connectionConfigAfterRemoteOAuthLogin(
+        loginConfig.remoteUrl,
+        getConnectionConfig(),
+      ),
+    );
     notifyConnectionConfigChanged();
     return result;
   });

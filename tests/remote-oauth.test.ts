@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { EventEmitter } from "events";
+import type { ConnectionConfig } from "../src/main/config";
 
 const mocks = vi.hoisted(() => {
   class FakeEmitter {
@@ -54,12 +55,35 @@ import {
   REMOTE_OAUTH_PARTITION,
   buildRemoteOAuthWsUrl,
   clearRemoteOAuthSession,
+  connectionConfigAfterRemoteOAuthLogin,
   cookiesHaveRemoteOAuthSession,
   mintRemoteOAuthWsTicket,
   openRemoteOAuthLogin,
   requestRemoteOAuthJson,
   remoteOAuthSessionState,
 } from "../src/main/remote-oauth";
+
+function connectionConfig(
+  overrides: Partial<ConnectionConfig> = {},
+): ConnectionConfig {
+  return {
+    mode: "remote",
+    remoteUrl: "https://hermes.example/v1",
+    apiKey: "original-token",
+    remoteAuthMode: "auto",
+    remoteChatTransport: "auto",
+    sshChatTransport: "auto",
+    ssh: {
+      host: "",
+      port: 22,
+      username: "",
+      keyPath: "",
+      remotePort: 8642,
+      localPort: 18642,
+    },
+    ...overrides,
+  };
+}
 
 function mockNetJsonResponse(
   statusCode: number,
@@ -133,6 +157,48 @@ describe("remote OAuth session boundary", () => {
 
     await expect(login).rejects.toMatchObject({ code: "oauth_cancelled" });
   });
+
+  // @lat: [[remote-dashboard-oauth#Test specifications#Post-login config revalidation]]
+  it("applies login to the current matching config without restoring stale settings", () => {
+    const current = connectionConfig({
+      remoteUrl: "https://hermes.example/api/",
+      apiKey: "changed-while-login-was-open",
+      remoteChatTransport: "dashboard",
+      sshChatTransport: "legacy",
+      ssh: {
+        host: "new-host",
+        port: 2222,
+        username: "jai",
+        keyPath: "/tmp/id",
+        remotePort: 9000,
+        localPort: 19000,
+      },
+    });
+
+    expect(
+      connectionConfigAfterRemoteOAuthLogin(
+        "https://hermes.example/v1",
+        current,
+      ),
+    ).toEqual({ ...current, remoteAuthMode: "oauth" });
+  });
+
+  it.each([
+    connectionConfig({ remoteUrl: "https://other.example" }),
+    connectionConfig({ mode: "ssh" }),
+  ])(
+    "rejects login completion after the selected connection changes",
+    (current) => {
+      expect(() =>
+        connectionConfigAfterRemoteOAuthLogin(
+          "https://hermes.example/v1",
+          current,
+        ),
+      ).toThrowError(
+        expect.objectContaining({ code: "oauth_connection_changed" }),
+      );
+    },
+  );
 
   it("routes authenticated JSON through Electron net with session cookies", async () => {
     const request = mockNetJsonResponse(200, { ok: true });

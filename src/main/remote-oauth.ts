@@ -6,6 +6,7 @@ import {
   type Cookie,
   type Session,
 } from "electron";
+import type { ConnectionConfig } from "./config";
 
 export const REMOTE_OAUTH_PARTITION = "persist:hermes-remote-oauth";
 
@@ -16,6 +17,7 @@ const SESSION_COOKIE_SUFFIXES = [
 
 export type RemoteOAuthErrorCode =
   | "oauth_cancelled"
+  | "oauth_connection_changed"
   | "oauth_login_required"
   | "oauth_request_failed";
 
@@ -51,6 +53,28 @@ function normalizeRemoteOAuthBaseUrl(rawUrl: string): URL {
   if (/^\/(?:v1|api)$/i.test(url.pathname)) url.pathname = "";
   if (!url.pathname) url.pathname = "/";
   return url;
+}
+
+export function connectionConfigAfterRemoteOAuthLogin(
+  loginBaseUrl: string,
+  current: ConnectionConfig,
+): ConnectionConfig {
+  const loginUrl = normalizeRemoteOAuthBaseUrl(loginBaseUrl).toString();
+  let currentUrl = "";
+  try {
+    currentUrl = current.remoteUrl.trim()
+      ? normalizeRemoteOAuthBaseUrl(current.remoteUrl).toString()
+      : "";
+  } catch {
+    // An invalid current URL means the selection changed during sign-in.
+  }
+  if (current.mode !== "remote" || currentUrl !== loginUrl) {
+    throw new RemoteOAuthError(
+      "The remote connection changed while sign-in was open. Sign in again for the current gateway.",
+      "oauth_connection_changed",
+    );
+  }
+  return { ...current, remoteAuthMode: "oauth" };
 }
 
 function getRemoteOAuthSession(): Session {

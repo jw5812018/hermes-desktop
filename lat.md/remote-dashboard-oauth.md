@@ -18,13 +18,15 @@ OAuth cookies live only in a dedicated persistent Electron session owned by main
 
 [[src/main/remote-oauth.ts#requestRemoteOAuthJson]] uses Electron `net` with that session and `useSessionCookies: true`. Cookies, refresh tokens, and WebSocket tickets never enter renderer state or desktop configuration.
 
+After the browser flow returns, [[src/main/remote-oauth.ts#connectionConfigAfterRemoteOAuthLogin]] re-reads the current configuration. It commits OAuth mode only when Remote mode and the normalized gateway URL still match, preserving newer settings.
+
 ## WebSocket ticket lifecycle
 
 Every OAuth WebSocket attempt receives a new single-use ticket immediately before connection.
 
 [[src/main/dashboard.ts#freshDashboardWebSocketUrl]] calls [[src/main/remote-oauth.ts#mintRemoteOAuthWsTicket]] for OAuth connections. Readiness probing consumes its own ticket; renderer reconnects request another through bounded IPC.
 
-Direct HTTP Remote dashboards use `ws:` after ticket minting, so both packaged CSP layers allow that scheme while authentication remains in the single-use ticket.
+For non-loopback HTTP gateways, [[src/main/dashboard-websocket-relay.ts#createLoopbackWebSocketRelay]] proxies one WebSocket through a random-capability loopback URL. The renderer CSP permits loopback WebSockets, never arbitrary `ws:` origins.
 
 ## Session data routing
 
@@ -61,3 +63,11 @@ Login-required Remote chat errors reach user-visible failure handling and never 
 ### Settings authentication state
 
 Settings probes auth automatically, shows browser sign-in for OAuth, preserves token input for token gateways, and handles cancellation without false connected state.
+
+### Post-login config revalidation
+
+OAuth login preserves settings changed while the browser is open and rejects completion when the selected gateway or connection mode changed.
+
+### Loopback WebSocket confinement
+
+Insecure remote WebSockets use a one-shot loopback relay with an unguessable path, while renderer CSP excludes the wildcard `ws:` source.
