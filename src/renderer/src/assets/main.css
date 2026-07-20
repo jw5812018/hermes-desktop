@@ -494,6 +494,15 @@
     U+0600-06FF, U+0750-077F, U+0870-089F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF;
 }
 
+/* ----- Space Grotesk (numeric / money display) ----- */
+@font-face {
+  font-family: "Space Grotesk";
+  src: url("./fonts/SpaceGrotesk-Variable.ttf") format("truetype");
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* ----- Shared Tokens ----- */
 :root {
   --radius-sm: 6px;
@@ -506,6 +515,8 @@
     sans-serif;
   --font-mono:
     "SF Mono", "Fira Code", "JetBrains Mono", Menlo, Consolas, monospace;
+  /* Amounts and money figures (bank teller totals, token balances). */
+  --font-numeric: "Space Grotesk", var(--font-sans);
 }
 
 /* ----- Squared corners (radius toggle off) ----- */

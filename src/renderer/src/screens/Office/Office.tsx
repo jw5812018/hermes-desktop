@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import type { GpuStatus } from "../../../../shared/gpu";
 import { useI18n } from "../../components/useI18n";
-import { useProfileModal } from "../../components/profile/ProfileModalContext";
 import oneChatIcon from "../../assets/images/one-chat.svg";
 import OneChatModal from "./OneChatModal";
 import Office3D from "./office3d/Office3D";
@@ -52,7 +51,7 @@ function readStoredCeo(): string | null {
  * The Office tab. Renders a native, in-renderer 3D office (no external dev
  * server / webview) where each Hermes profile appears as an interactive agent.
  */
-function Office({ visible }: OfficeProps): React.JSX.Element {
+function Office({ visible, profile }: OfficeProps): React.JSX.Element {
   const { t } = useI18n();
   const [agents, setAgents] = useState<OfficeAgent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,7 +72,6 @@ function Office({ visible }: OfficeProps): React.JSX.Element {
   // walking through doorways and interactions fire with E near their points.
   const [walkMode, setWalkMode] = useState(false);
   const [nearby, setNearby] = useState<PlayerInteraction | null>(null);
-  const { openProfile } = useProfileModal();
   // Developer building-mover: click a building, then click ground to reposition
   // it; positions are logged to the console so the cityPlan constants can be
   // updated to match.
@@ -241,12 +239,11 @@ function Office({ visible }: OfficeProps): React.JSX.Element {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [visible, location, walkMode, exitWalkMode, exitToCity]);
 
-  // Bank ATM → the profile modal's wallet section (the selected agent's
-  // wallet, falling back to the first profile).
+  // Bank ATM → the ATM representative menu (wallet actions; withdraw/deposit
+  // coming soon), same modal machinery as the teller.
   const handleAtmActivate = useCallback(() => {
-    const profileName = selectedId ?? agents[0]?.id;
-    if (profileName) openProfile(profileName, { initialSection: "wallet" });
-  }, [selectedId, agents, openProfile]);
+    setActiveRepId("atm");
+  }, []);
 
   const handleCarActivate = useCallback(
     (car: ShowroomCar) => setCarCard(car),
@@ -306,6 +303,16 @@ function Office({ visible }: OfficeProps): React.JSX.Element {
   const selectedAgent =
     positionedAgents.find((a) => a.id === selectedId) ?? null;
   const selectedIsCeo = selectedAgent?.position === "ceo";
+
+  // Default the rep panel's agent picker to the active profile (falling back to
+  // the first agent) so it opens on the current profile instead of empty.
+  const defaultAgentId = useMemo(
+    () =>
+      positionedAgents.some((a) => a.id === profile)
+        ? (profile ?? null)
+        : (positionedAgents[0]?.id ?? null),
+    [positionedAgents, profile],
+  );
   const selectedStatusColor =
     selectedAgent?.status === "working"
       ? "#22c55e"
@@ -767,7 +774,7 @@ function Office({ visible }: OfficeProps): React.JSX.Element {
           <RepInteractionPanel
             rep={activeRep}
             agents={positionedAgents}
-            initialAgentId={selectedId}
+            initialAgentId={selectedId ?? defaultAgentId}
             onClose={closeRepPanel}
           />
         )}
