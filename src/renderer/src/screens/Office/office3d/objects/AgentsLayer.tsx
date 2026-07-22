@@ -3,17 +3,10 @@ import { useFrame } from "@react-three/fiber";
 import type * as THREE from "three";
 import { AgentModel } from "./agents";
 import { RIGGED_EMPLOYEE_URL, RIGGED_MAN_URL } from "./RiggedCharacter";
-import {
-  REST_SEATS,
-  CEO_OFFICE,
-  CEO_DOOR_Y,
-  DIVIDER_X,
-  DOOR_Y,
-  type Workstation,
-  type Seat,
-} from "../layout";
+import { REST_SEATS, type Workstation, type Seat } from "../layout";
 import { WALK_SPEED } from "../core/constants";
 import { toWorld, worldToCanvas } from "../core/geometry";
+import { routeTarget } from "../core/routing";
 import {
   applyCrowdSeparation,
   buildOfficeColliders,
@@ -93,33 +86,6 @@ interface ControllerState {
 
 function randomBetween(min: number, max: number): number {
   return min + Math.random() * (max - min);
-}
-
-// Doorway waypoints just inside each room, so agents pass through the gap in
-// the partition instead of clipping the wall (we have no full pathfinder).
-function routeTarget(
-  ax: number,
-  ay: number,
-  finalX: number,
-  finalY: number,
-): { x: number; y: number } {
-  const onEast = ax > DIVIDER_X;
-  const targetEast = finalX > DIVIDER_X;
-  if (onEast !== targetEast) {
-    return { x: targetEast ? DIVIDER_X + 60 : DIVIDER_X - 60, y: DOOR_Y };
-  }
-  // CEO glass corner office: route through the doorway gap in its east glass
-  // wall when crossing the boundary in either direction.
-  const inCeoOffice = ax < CEO_OFFICE.maxX && ay > CEO_OFFICE.minY;
-  const targetInCeoOffice =
-    finalX < CEO_OFFICE.maxX && finalY > CEO_OFFICE.minY;
-  if (inCeoOffice !== targetInCeoOffice) {
-    return {
-      x: targetInCeoOffice ? CEO_OFFICE.maxX - 60 : CEO_OFFICE.maxX + 60,
-      y: CEO_DOOR_Y,
-    };
-  }
-  return { x: finalX, y: finalY };
 }
 
 function makeRenderAgent(agent: OfficeAgent): RenderAgent {
